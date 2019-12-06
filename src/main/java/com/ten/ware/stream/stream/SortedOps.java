@@ -30,17 +30,19 @@ import java.util.function.IntFunction;
 
 /**
  * Factory methods for transforming streams into sorted streams.
+ * 将流转换为分类流的工厂方法。
  *
  * @since 1.8
  */
 final class SortedOps {
 
-    private SortedOps() { }
+    private SortedOps() {
+    }
 
     /**
      * Appends a "sorted" operation to the provided stream.
      *
-     * @param <T> the type of both input and output elements
+     * @param <T>      the type of both input and output elements
      * @param upstream a reference stream with element type T
      */
     static <T> Stream<T> makeRef(AbstractPipeline<?, T, ?> upstream) {
@@ -50,8 +52,8 @@ final class SortedOps {
     /**
      * Appends a "sorted" operation to the provided stream.
      *
-     * @param <T> the type of both input and output elements
-     * @param upstream a reference stream with element type T
+     * @param <T>        the type of both input and output elements
+     * @param upstream   a reference stream with element type T
      * @param comparator the comparator to order elements by
      */
     static <T> Stream<T> makeRef(AbstractPipeline<?, T, ?> upstream,
@@ -62,7 +64,7 @@ final class SortedOps {
     /**
      * Appends a "sorted" operation to the provided stream.
      *
-     * @param <T> the type of both input and output elements
+     * @param <T>      the type of both input and output elements
      * @param upstream a reference stream with element type T
      */
     static <T> IntStream makeInt(AbstractPipeline<?, Integer, ?> upstream) {
@@ -72,7 +74,7 @@ final class SortedOps {
     /**
      * Appends a "sorted" operation to the provided stream.
      *
-     * @param <T> the type of both input and output elements
+     * @param <T>      the type of both input and output elements
      * @param upstream a reference stream with element type T
      */
     static <T> LongStream makeLong(AbstractPipeline<?, Long, ?> upstream) {
@@ -82,7 +84,7 @@ final class SortedOps {
     /**
      * Appends a "sorted" operation to the provided stream.
      *
-     * @param <T> the type of both input and output elements
+     * @param <T>      the type of both input and output elements
      * @param upstream a reference stream with element type T
      */
     static <T> DoubleStream makeDouble(AbstractPipeline<?, Double, ?> upstream) {
@@ -105,7 +107,7 @@ final class SortedOps {
          */
         OfRef(AbstractPipeline<?, T, ?> upstream) {
             super(upstream, StreamShape.REFERENCE,
-                  StreamOpFlag.IS_ORDERED | StreamOpFlag.IS_SORTED);
+                    StreamOpFlag.IS_ORDERED | StreamOpFlag.IS_SORTED);
             this.isNaturalSort = true;
             // Will throw CCE when we try to sort if T is not Comparable
             @SuppressWarnings("unchecked")
@@ -120,7 +122,7 @@ final class SortedOps {
          */
         OfRef(AbstractPipeline<?, T, ?> upstream, Comparator<? super T> comparator) {
             super(upstream, StreamShape.REFERENCE,
-                  StreamOpFlag.IS_ORDERED | StreamOpFlag.NOT_SORTED);
+                    StreamOpFlag.IS_ORDERED | StreamOpFlag.NOT_SORTED);
             this.isNaturalSort = false;
             this.comparator = Objects.requireNonNull(comparator);
         }
@@ -147,8 +149,7 @@ final class SortedOps {
             // naturally sorts then collect the output
             if (StreamOpFlag.SORTED.isKnown(helper.getStreamAndOpFlags()) && isNaturalSort) {
                 return helper.evaluate(spliterator, false, generator);
-            }
-            else {
+            } else {
                 // @@@ Weak two-pass parallel implementation; parallel collect, parallel sort
                 T[] flattenedData = helper.evaluate(spliterator, true, generator).asArray(generator);
                 Arrays.parallelSort(flattenedData, comparator);
@@ -163,7 +164,7 @@ final class SortedOps {
     private static final class OfInt extends IntPipeline.StatefulOp<Integer> {
         OfInt(AbstractPipeline<?, Integer, ?> upstream) {
             super(upstream, StreamShape.INT_VALUE,
-                  StreamOpFlag.IS_ORDERED | StreamOpFlag.IS_SORTED);
+                    StreamOpFlag.IS_ORDERED | StreamOpFlag.IS_SORTED);
         }
 
         @Override
@@ -184,8 +185,7 @@ final class SortedOps {
                                                        IntFunction<Integer[]> generator) {
             if (StreamOpFlag.SORTED.isKnown(helper.getStreamAndOpFlags())) {
                 return helper.evaluate(spliterator, false, generator);
-            }
-            else {
+            } else {
                 Node.OfInt n = (Node.OfInt) helper.evaluate(spliterator, true, generator);
 
                 int[] content = n.asPrimitiveArray();
@@ -202,7 +202,7 @@ final class SortedOps {
     private static final class OfLong extends LongPipeline.StatefulOp<Long> {
         OfLong(AbstractPipeline<?, Long, ?> upstream) {
             super(upstream, StreamShape.LONG_VALUE,
-                  StreamOpFlag.IS_ORDERED | StreamOpFlag.IS_SORTED);
+                    StreamOpFlag.IS_ORDERED | StreamOpFlag.IS_SORTED);
         }
 
         @Override
@@ -223,8 +223,7 @@ final class SortedOps {
                                                     IntFunction<Long[]> generator) {
             if (StreamOpFlag.SORTED.isKnown(helper.getStreamAndOpFlags())) {
                 return helper.evaluate(spliterator, false, generator);
-            }
-            else {
+            } else {
                 Node.OfLong n = (Node.OfLong) helper.evaluate(spliterator, true, generator);
 
                 long[] content = n.asPrimitiveArray();
@@ -241,7 +240,7 @@ final class SortedOps {
     private static final class OfDouble extends DoublePipeline.StatefulOp<Double> {
         OfDouble(AbstractPipeline<?, Double, ?> upstream) {
             super(upstream, StreamShape.DOUBLE_VALUE,
-                  StreamOpFlag.IS_ORDERED | StreamOpFlag.IS_SORTED);
+                    StreamOpFlag.IS_ORDERED | StreamOpFlag.IS_SORTED);
         }
 
         @Override
@@ -262,8 +261,7 @@ final class SortedOps {
                                                       IntFunction<Double[]> generator) {
             if (StreamOpFlag.SORTED.isKnown(helper.getStreamAndOpFlags())) {
                 return helper.evaluate(spliterator, false, generator);
-            }
-            else {
+            } else {
                 Node.OfDouble n = (Node.OfDouble) helper.evaluate(spliterator, true, generator);
 
                 double[] content = n.asPrimitiveArray();
@@ -296,6 +294,16 @@ final class SortedOps {
      * required to produce a result, may flow through the pipeline.  This can
      * occur, in general (not restricted to just sorting), for short-circuiting
      * parallel pipelines.
+     * <p>
+     * 用于实现引用流排序的抽象接收器。注意:下面的文档适用于引用和所有原始汇。
+     * 排序接收首先接受所有元素，然后缓冲成一个数组或一个可重新调整大小的数据结构(如果管道的大小分别是已知的或未知的)。
+     * 在接收协议的最后，这些元素被排序，然后向下推。
+     * 如果调用cancellationrequired，则该类将记录。
+     * 如果是这样，可以推断将源元素推入管道的源知道管道正在短路。
+     * 在这种情况下，将元素推到下游的子类将通过调用downstream. cancellationrequired()来保持短路协议，
+     * 并在将元素推到下游之前检查结果是否为false。
+     * 注意，上面的行为是对顺序流排序的优化。这不是一个错误，更多的元素，比严格要求产生一个结果，可能流经管道。
+     * 在短路并行管道时，通常会出现这种情况(不限于排序)。
      */
     private abstract static class AbstractRefSortingSink<T> extends Sink.ChainedReference<T, T> {
         protected final Comparator<? super T> comparator;
@@ -351,8 +359,7 @@ final class SortedOps {
             if (!cancellationRequestedCalled) {
                 for (int i = 0; i < offset; i++)
                     downstream.accept(array[i]);
-            }
-            else {
+            } else {
                 for (int i = 0; i < offset && !downstream.cancellationRequested(); i++)
                     downstream.accept(array[i]);
             }
@@ -389,8 +396,7 @@ final class SortedOps {
             downstream.begin(list.size());
             if (!cancellationRequestedCalled) {
                 list.forEach(downstream::accept);
-            }
-            else {
+            } else {
                 for (T t : list) {
                     if (downstream.cancellationRequested()) break;
                     downstream.accept(t);
@@ -449,8 +455,7 @@ final class SortedOps {
             if (!cancellationRequestedCalled) {
                 for (int i = 0; i < offset; i++)
                     downstream.accept(array[i]);
-            }
-            else {
+            } else {
                 for (int i = 0; i < offset && !downstream.cancellationRequested(); i++)
                     downstream.accept(array[i]);
             }
@@ -489,8 +494,7 @@ final class SortedOps {
             if (!cancellationRequestedCalled) {
                 for (int anInt : ints)
                     downstream.accept(anInt);
-            }
-            else {
+            } else {
                 for (int anInt : ints) {
                     if (downstream.cancellationRequested()) break;
                     downstream.accept(anInt);
@@ -548,8 +552,7 @@ final class SortedOps {
             if (!cancellationRequestedCalled) {
                 for (int i = 0; i < offset; i++)
                     downstream.accept(array[i]);
-            }
-            else {
+            } else {
                 for (int i = 0; i < offset && !downstream.cancellationRequested(); i++)
                     downstream.accept(array[i]);
             }
@@ -588,8 +591,7 @@ final class SortedOps {
             if (!cancellationRequestedCalled) {
                 for (long aLong : longs)
                     downstream.accept(aLong);
-            }
-            else {
+            } else {
                 for (long aLong : longs) {
                     if (downstream.cancellationRequested()) break;
                     downstream.accept(aLong);
@@ -647,8 +649,7 @@ final class SortedOps {
             if (!cancellationRequestedCalled) {
                 for (int i = 0; i < offset; i++)
                     downstream.accept(array[i]);
-            }
-            else {
+            } else {
                 for (int i = 0; i < offset && !downstream.cancellationRequested(); i++)
                     downstream.accept(array[i]);
             }
@@ -687,8 +688,7 @@ final class SortedOps {
             if (!cancellationRequestedCalled) {
                 for (double aDouble : doubles)
                     downstream.accept(aDouble);
-            }
-            else {
+            } else {
                 for (double aDouble : doubles) {
                     if (downstream.cancellationRequested()) break;
                     downstream.accept(aDouble);

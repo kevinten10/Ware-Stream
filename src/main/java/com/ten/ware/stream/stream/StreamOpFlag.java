@@ -39,6 +39,10 @@ import java.util.Spliterator;
  * and terminal operations.  Not all stream flags are meaningful for all
  * entities; the following table summarizes which flags are meaningful in what
  * contexts:
+ * <p>
+ * 与流和操作的特征相对应的标志。流框架使用标记来控制、专门化或优化计算。
+ * 流标记可用于描述与流相关的几个不同实体的特征:流源、中间操作和终端操作。
+ * 并不是所有流标记对所有实体都有意义;下表总结了在什么上下文中哪些标志是有意义的:
  *
  * <div>
  * <table class="borderless">
@@ -153,6 +157,24 @@ import java.util.Spliterator;
  *     flagsFromSplitr = fromCharacteristics(s.characteristics());
  *     assert(flagsFromSplitr & stream.getStreamFlags() == flagsFromSplitr);
  * }</pre>
+ * <p>
+ * 在上表中，“PCI”表示“可保存、清除或注入”;“PC”表示“可保存或清除”，“PI”表示“可保存或注入”，“N”表示“无效”。
+ * 流标志由统一的位集表示，因此单个单词可以描述给定流实体的所有特征，
+ * 例如，流源的标志可以与流上后续操作的标志有效组合。
+ * 位掩码STREAM_MASK、OP_MASK和TERMINAL_OP_MASK可以使用一组位流标志进行处理，以生成只包含该实体类型的有效标志的掩码。
+ * 描述一个流源时，只需要描述该流具有什么特征;
+ * 在描述流操作时，需要描述该操作是否保留、注入或清除该特征。
+ * 因此，每个标志使用两个位，以便不仅允许表示特征的存在，而且允许表示操作如何修改该特征。
+ * 有两种常见的形式，其中标记位被组合成一个int位集。
+ * 流标记是通过对set()的enum特征值(或者，更常见的是，对以IS_为前缀的相应的静态命名常量进行操作)构造的统一位集。
+ * 操作标志是一个统一的位集，它通过对set()或clear()的enum特征值(分别注入或清除相应的标志)或更常见的是对以IS_或NOT_为前缀的相应命名常量进行操作来构造。
+ * 没有标记IS_或NOT_的标记被隐式地视为保留。在组合位集时，必须注意正确的组合操作是按正确的顺序应用的。
+ * 除了SHORT_CIRCUIT之外，流特性可以从等效的Spliterator特性派生出来:Spliterator。
+ * 明显,Spliterator。排序,Spliterator。命令,Spliterator.SIZED。
+ * 可以使用方法fromCharacteristics(spliterator)将spliterator特征位集转换为流标志，
+ * 然后使用toCharacteristics(int)将其转换回来。
+ * (位集SPLITERATOR_CHARACTERISTICS_MASK用于生成一个有效的spliterator特征位集，该位集可以转换为流标志。)
+ * 流的源封装了一个spliterator。当将源spliterator转换为流标志时，它的特征将是该流标志的一个适当的子集。例如:
  *
  * <p>
  * An intermediate operation, performed on an input stream to create a new
@@ -173,19 +195,30 @@ import java.util.Spliterator;
  * flags can be calculated, using {@link #combineOpFlags(int, int)}.  Such flags
  * ensure that preservation, clearing and injecting information is retained at
  * each stage.
- *
+ * <p>
  * The combined stream and operation flags for the source stage of the pipeline
  * is calculated as follows:
  * <pre> {@code
  *     int flagsForSourceStage = combineOpFlags(sourceFlags, INITIAL_OPS_VALUE);
  * }</pre>
- *
+ * <p>
+ * 在输入流上执行以创建新输出流的中间操作，可以保留、清除或注入流或操作特征。
+ * 类似地，在输入流上执行的产生输出结果的终端操作可以保留、清除或注入流或操作特征。
+ * 保存意味着，如果该特征出现在输入端，那么它也会出现在输出端。
+ * 清除意味着不管输入是什么，特性都不会出现在输出上。
+ * 注入意味着无论输入什么特性都存在于输出。
+ * 如果一个特征没有被清除或注入，那么它将被隐式地保留。
+ * 管道由封装了spliterator的流源、一个或多个中间操作以及最后产生结果的终端操作组成。
+ * 在管道的每个阶段，可以使用combineOpFlags(int, int)计算流和操作标志的组合。
+ * 这些标志确保在每个阶段保留、清除和注入信息。管道源阶段的流和操作标志组合计算如下:
+ * <p>
  * The combined stream and operation flags of each subsequent intermediate
  * operation stage in the pipeline is calculated as follows:
+ * 管道中各后续中间操作阶段的合并流和操作标志计算如下:
  * <pre> {@code
  *     int flagsForThisStage = combineOpFlags(flagsForPreviousStage, thisOpFlags);
  * }</pre>
- *
+ * <p>
  * Finally the flags output from the last intermediate operation of the pipeline
  * are combined with the operation flags of the terminal operation to produce
  * the flags output from the pipeline.
@@ -196,8 +229,13 @@ import java.util.Spliterator;
  * pre-allocate data structures and combined with
  * {@link Spliterator#SUBSIZED} that information can be utilized to
  * perform concurrent in-place updates into a shared array.
- *
+ * <p>
  * For specific details see the {@link AbstractPipeline} constructors.
+ * <p>
+ * 最后，将管道最后一个中间操作的输出标志与终端操作的操作标志相结合，生成管道输出的标志。
+ * 然后可以使用这些标志来应用优化。
+ * 例如，如果size . isknown (flags)返回true，则流大小在整个管道中保持不变，此信息可用于预先分配数据结构并与Spliterator结合。
+ * 该信息可用于在共享数组中执行并发的就地更新。有关详细信息，请参阅AbstractPipeline构造函数。
  *
  * @since 1.8
  */
@@ -215,6 +253,11 @@ enum StreamOpFlag {
      * Characteristics belong to certain types, see the Type enum. Bit masks for
      * the types are constructed as per the following table:
      *
+     * 每个特征在一个位集合中占2位，以容纳保存、清除和设置/注入信息。
+     * 这适用于流标志、中间/终端操作标志以及流和操作组合标志。
+     * 尽管前者每个特征只需要1位信息，但是结合标记来对齐set和inject位是否更有效呢?
+     * 特征属于某些类型，请参见类型enum。类型的位掩码按下表构造:
+     *
      *                        DISTINCT  SORTED  ORDERED  SIZED  SHORT_CIRCUIT
      *          SPLITERATOR      01       01       01      01        00
      *               STREAM      01       01       01      01        00
@@ -230,7 +273,6 @@ enum StreamOpFlag {
      * non-zero values.
      */
 
-
     // The following flags correspond to characteristics on Spliterator
     // and the values MUST be equal.
     //
@@ -245,7 +287,7 @@ enum StreamOpFlag {
     // 0, 0x00000001
     // Matches Spliterator.DISTINCT
     DISTINCT(0,
-             set(Type.SPLITERATOR).set(Type.STREAM).setAndClear(Type.OP)),
+            set(Type.SPLITERATOR).set(Type.STREAM).setAndClear(Type.OP)),
 
     /**
      * Characteristic value signifying that encounter order follows a natural
@@ -266,7 +308,7 @@ enum StreamOpFlag {
     // 1, 0x00000004
     // Matches Spliterator.SORTED
     SORTED(1,
-           set(Type.SPLITERATOR).set(Type.STREAM).setAndClear(Type.OP)),
+            set(Type.SPLITERATOR).set(Type.STREAM).setAndClear(Type.OP)),
 
     /**
      * Characteristic value signifying that an encounter order is
@@ -294,7 +336,7 @@ enum StreamOpFlag {
     // 3, 0x00000040
     // Matches Spliterator.SIZED
     SIZED(3,
-          set(Type.SPLITERATOR).set(Type.STREAM).clear(Type.OP)),
+            set(Type.SPLITERATOR).set(Type.STREAM).clear(Type.OP)),
 
     // The following Spliterator characteristics are not currently used but a
     // gap in the bit set is deliberately retained to enable corresponding
@@ -325,7 +367,7 @@ enum StreamOpFlag {
      */
     // 12, 0x01000000
     SHORT_CIRCUIT(12,
-                  set(Type.OP).set(Type.TERMINAL_OP));
+            set(Type.OP).set(Type.TERMINAL_OP));
 
     // The following 2 flags are currently undefined and a free for any further
     // stream flags if/when required
@@ -484,7 +526,7 @@ enum StreamOpFlag {
      * and injected on combined stream and operation flags.
      *
      * @param flags the stream flags, operation flags, or combined stream and
-     *        operation flags
+     *              operation flags
      * @return true if this flag is known, otherwise false.
      */
     boolean isKnown(int flags) {
@@ -547,6 +589,9 @@ enum StreamOpFlag {
      */
     static final int UPSTREAM_TERMINAL_OP_MASK = createMask(Type.UPSTREAM_TERMINAL_OP);
 
+    /**
+     * 它根据传入的Type对应表1.1得到对应的流掩码，再根据position对掩码进行左移操作，并将得到的所有结果按位或。
+     */
     private static int createMask(Type t) {
         int mask = 0;
         for (StreamOpFlag flag : StreamOpFlag.values()) {
@@ -575,12 +620,17 @@ enum StreamOpFlag {
 
     /**
      * Flag mask for stream flags that are cleared.
+     * <p>
+     * 他们一个是设置流标志的位置掩码，一个是清理流标志的位置掩码。
+     * 而这些操作的位置掩码实际上都是依据STREAM_MASK这个源流标志的位掩码基础上进行位移计算得到的。
      */
     private static final int FLAG_MASK_NOT = STREAM_MASK << 1;
 
     /**
      * The initial value to be combined with the stream flags of the first
      * stream in the pipeline.
+     * <p>
+     * 要与管道中第一个流的流标志组合的初始值。
      */
     static final int INITIAL_OPS_VALUE = FLAG_MASK_IS | FLAG_MASK_NOT;
 
@@ -631,8 +681,8 @@ enum StreamOpFlag {
 
     private static int getMask(int flags) {
         return (flags == 0)
-               ? FLAG_MASK
-               : ~(flags | ((FLAG_MASK_IS & flags) << 1) | ((FLAG_MASK_NOT & flags) >> 1));
+                ? FLAG_MASK
+                : ~(flags | ((FLAG_MASK_IS & flags) << 1) | ((FLAG_MASK_NOT & flags) >> 1));
     }
 
     /**
@@ -679,8 +729,8 @@ enum StreamOpFlag {
      * will be preserved on the updated combined stream and operation flags.
      *
      * @param newStreamOrOpFlags the stream or operation flags.
-     * @param prevCombOpFlags previously combined stream and operation flags.
-     *        The value {#link INITIAL_OPS_VALUE} must be used as the seed value.
+     * @param prevCombOpFlags    previously combined stream and operation flags.
+     *                           The value {#link INITIAL_OPS_VALUE} must be used as the seed value.
      * @return the updated combined stream and operation flags.
      */
     static int combineOpFlags(int newStreamOrOpFlags, int prevCombOpFlags) {
@@ -718,16 +768,24 @@ enum StreamOpFlag {
 
     /**
      * Converts a spliterator characteristic bit set to stream flags.
+     * <p>
+     * 这里先获取此Spliterator及其元素的一组特征,并且与Spliterator.SORTED（0x00000004）
+     * 进行按位与操作如果它的值不为0且这个Spliterator的来源不为null,
+     * 则将Spliterator与分裂器的位掩码还有遵循顺序定义的特征值的按位否定的结果进行按位与操作。
+     * else的话就不添加顺序特征值。
+     * <p>
+     * 对此，代码上的解释为:
+     * 如果spliterator自然是{@code SORTED}（关联的{@code Comparator}是{@code null}），
+     * 那么特性将被转换为{@link #SORTED}标志，否则特征不会被转换。
+     * 也就是说，特征值最终都是要添加一个转换标志的。
      *
-     * @implSpec
-     * If the spliterator is naturally {@code SORTED} (the associated
+     * @param spliterator the spliterator from which to obtain characteristic
+     *                    bit set.
+     * @return the stream flags.
+     * @implSpec If the spliterator is naturally {@code SORTED} (the associated
      * {@code Comparator} is {@code null}) then the characteristic is converted
      * to the {@link #SORTED} flag, otherwise the characteristic is not
      * converted.
-     *
-     * @param spliterator the spliterator from which to obtain characteristic
-     *        bit set.
-     * @return the stream flags.
      */
     static int fromCharacteristics(Spliterator<?> spliterator) {
         int characteristics = spliterator.characteristics();
@@ -735,8 +793,7 @@ enum StreamOpFlag {
             // Do not propagate the SORTED characteristic if it does not correspond
             // to a natural sort order
             return characteristics & SPLITERATOR_CHARACTERISTICS_MASK & ~Spliterator.SORTED;
-        }
-        else {
+        } else {
             return characteristics & SPLITERATOR_CHARACTERISTICS_MASK;
         }
     }
